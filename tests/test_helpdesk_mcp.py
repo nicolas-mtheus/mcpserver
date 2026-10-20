@@ -1,4 +1,5 @@
 import tempfile
+import sqlite3
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -53,6 +54,8 @@ class HelpdeskToolsTests(unittest.TestCase):
             helpdesk_mcp.buscar_historico_cliente("missing")
 
     def test_status_change_persists_and_records_history(self):
+        history_before = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+
         result = helpdesk_mcp.atualizar_status(
             "HD-1001", "em_andamento", "Agente iniciou a analise."
         )
@@ -60,7 +63,46 @@ class HelpdeskToolsTests(unittest.TestCase):
         self.assertTrue(result["alterado"])
         self.assertEqual(helpdesk_mcp.listar_chamados("em_andamento")[0]["id"], "HD-1001")
         history = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+        self.assertEqual(history[: len(history_before)], history_before)
+        self.assertEqual(history[-1]["old_status"], "aberto")
+        self.assertEqual(history[-1]["new_status"], "em_andamento")
         self.assertEqual(history[-1]["note"], "Agente iniciou a analise.")
+
+    def test_history_insert_failure_rolls_back_status_update(self):
+        with sqlite3.connect(self.db_path) as connection:
+            connection.execute(
+                """CREATE TRIGGER reject_history_insert
+                   BEFORE INSERT ON ticket_history
+                   WHEN NEW.ticket_id = 'HD-1001'
+                   BEGIN SELECT RAISE(ABORT, 'history write rejected'); END"""
+            )
+
+        with self.assertRaisesRegex(sqlite3.IntegrityError, "history write rejected"):
+            helpdesk_mcp.atualizar_status("HD-1001", "em_andamento")
+
+        ticket = next(
+            ticket
+            for ticket in helpdesk_mcp.listar_chamados()
+            if ticket["id"] == "HD-1001"
+        )
+        history = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+        self.assertEqual(ticket["status"], "aberto")
+        self.assertEqual(len(history), 3)
+
+    def test_invalid_status_does_not_change_ticket_or_history(self):
+        history_before = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+
+        with self.assertRaisesRegex(ValueError, "Status invalido"):
+            helpdesk_mcp.atualizar_status("HD-1001", "pendente")
+
+        ticket = next(
+            ticket
+            for ticket in helpdesk_mcp.listar_chamados()
+            if ticket["id"] == "HD-1001"
+        )
+        history_after = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+        self.assertEqual(ticket["status"], "aberto")
+        self.assertEqual(history_after, history_before)
 
     def test_repeating_status_does_not_add_history_event(self):
         before = len(helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"])
@@ -72,10 +114,15 @@ class HelpdeskToolsTests(unittest.TestCase):
         self.assertEqual(after, before)
 
     def test_unknown_ticket_and_status_are_rejected(self):
+        history_before = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+
         with self.assertRaisesRegex(ValueError, "nao encontrado"):
             helpdesk_mcp.atualizar_status("missing", "aberto")
         with self.assertRaisesRegex(ValueError, "Status invalido"):
             helpdesk_mcp.atualizar_status("HD-1001", "pendente")
+
+        history_after = helpdesk_mcp.buscar_historico_cliente("cli-001")["historico"]
+        self.assertEqual(history_after, history_before)
 
 
 if __name__ == "__main__":

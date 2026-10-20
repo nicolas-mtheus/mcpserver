@@ -14,9 +14,9 @@
 
 ## Fase 3 - `atualizar_status`
 
-Atualizar o status de um chamado existente e inserir um evento de historico com status anterior, novo status, data e observacao.
+**Concluida.** A ferramenta atualiza chamados existentes para status permitidos e acrescenta eventos de auditoria sem apagar o historico anterior. A operacao e atomica no SQLite.
 
-**Aceite:** a mudanca e persistida; status invalido ou chamado inexistente e rejeitado; repetir o status atual nao cria evento duplicado.
+**Aceite atendido:** status invalido e chamado inexistente sao rejeitados sem escrita; falha ao inserir evento reverte a alteracao do chamado; repetir o status atual nao altera dados nem cria evento. Os 10 testes automatizados passaram.
 
 ## Criterio transversal
 
@@ -33,3 +33,13 @@ O banco e os registros ficticios sao criados automaticamente na primeira execuca
 - A Fase 3 deve atualizar `tickets` e inserir o evento correspondente em `ticket_history` na mesma transacao, como ja previsto na implementacao.
 
 Os registros iniciais de historico representam a abertura e as mudancas existentes. Se fases futuras precisarem auditar outros tipos de evento alem de status, o formato de `ticket_history` devera ser revisto nessa evolucao, sem bloquear o escopo atual.
+
+## Replanejamento para atualizacao de status
+
+- **Status:** reutilizar a lista fechada definida em `STATUSES` e pelo `CHECK` do SQLite. Valores fora dela devem ser rejeitados antes da escrita.
+- **Chamado inexistente:** consultar pelo identificador antes de atualizar; se nao existir, retornar erro claro e nao criar evento de historico.
+- **Preservacao do historico:** cada transicao real deve atualizar `tickets` e inserir um novo registro em `ticket_history` na mesma transacao. Eventos anteriores sao append-only para esta funcionalidade.
+- **Mesmo status:** tratar como operacao sem mudanca, sem atualizar a data nem inserir evento duplicado.
+- **Auditoria do evento:** registrar status anterior, novo status, observacao e data/hora UTC. Em caso de falha na escrita do evento, a atualizacao do chamado tambem deve sofrer rollback.
+
+A Fase 2 (`buscar_historico_cliente`) permanece **concluida**. Sua consulta ordena eventos por data e identificador, e exibira os novos eventos acrescentados pela Fase 3 sem exigir alteracao do esquema.
