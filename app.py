@@ -107,16 +107,17 @@ def _handle_command(text: str) -> dict[str, Any]:
 
 
 with st.sidebar:
-    st.markdown('<div class="brand-mark">Helpdesk · MCP</div>', unsafe_allow_html=True)
-    st.markdown('<div class="status-line"><span class="status-dot"></span>Servidor local · stdio</div>', unsafe_allow_html=True)
-    st.markdown("### Comandos rápidos")
+    st.markdown("### Comandos para digitar no chat")
+    st.caption("Use estes textos na caixa de conversa; o título do app não é um comando.")
     st.markdown('<div class="command-label">Chamados</div>', unsafe_allow_html=True)
-    st.code("listar abertos\nlistar chamados", language="text")
+    st.code("listar abertos", language="text")
+    st.code("listar chamados", language="text")
     st.markdown('<div class="command-label">Histórico</div>', unsafe_allow_html=True)
     st.code("historico cliente cli-001", language="text")
     st.markdown('<div class="command-label">Atualização</div>', unsafe_allow_html=True)
-    st.code("alterar chamado 3\npara fechado", language="text")
+    st.code("alterar chamado 3 para fechado", language="text")
     st.caption("IDs numéricos 1–3 apontam para HD-1001–HD-1003.")
+    st.markdown('<div class="status-line"><span class="status-dot"></span>Servidor MCP local · stdio</div>', unsafe_allow_html=True)
     if st.button("Limpar conversa", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
