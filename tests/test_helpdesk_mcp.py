@@ -32,6 +32,21 @@ class HelpdeskToolsTests(unittest.TestCase):
 
         self.assertEqual(len(result["chamados"]), 2)
         self.assertEqual(len(result["historico"]), 3)
+        self.assertEqual(
+            [event["new_status"] for event in result["historico"]],
+            ["aberto", "aberto", "resolvido"],
+        )
+        self.assertEqual(
+            {event["ticket_id"] for event in result["historico"]},
+            {ticket["id"] for ticket in result["chamados"]},
+        )
+
+    def test_customer_without_tickets_returns_empty_lists(self):
+        result = helpdesk_mcp.buscar_historico_cliente("cli-003")
+
+        self.assertEqual(result["cliente"]["id"], "cli-003")
+        self.assertEqual(result["chamados"], [])
+        self.assertEqual(result["historico"], [])
 
     def test_unknown_customer_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "nao encontrado"):
