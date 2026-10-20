@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "helpdesk": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "${workspaceFolder}/helpdesk_mcp.py"
+      ]
+    }
+  }
+}
